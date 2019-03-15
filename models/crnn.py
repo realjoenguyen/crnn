@@ -83,6 +83,7 @@ class CRNN(nn.Module):
 
     def forward(self, x, decode=False, print_softmax=False):
         features = self.cnn(x)
+        # TODO: add attention on top of CNN
         features = self.features_to_sequence(features)
         seq, hidden = self.lstm(features)
         seq = self.lstm2logit(seq)
@@ -141,6 +142,7 @@ class CRNN(nn.Module):
         return out
 
     def decode(self, pred):
+        # TODO: add this one https://github.com/githubharald/CTCDecoder
         pred = pred.permute(1, 0, 2).cpu().data.numpy()
         seq = []
         for i in range(pred.shape[0]):
