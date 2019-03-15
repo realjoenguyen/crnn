@@ -23,6 +23,7 @@ from test import test
 
 def main():
     input_size = [int(x) for x in config.input_size.split('x')]
+    # TODO: 1) Sử dụng elastic transform 2) Random erasor một phần của bức ảnh. de data augmentation
     transform = Compose([
         Rotation(),
         Resize(size=(input_size[0], input_size[1]), data_augmen=True)
