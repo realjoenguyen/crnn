@@ -14,11 +14,11 @@ def load_weights(target, source_state):
             new_dict[k] = v
     target.load_state_dict(new_dict)
 
-def load_model(abc, seq_proj=[0, 0], backend='resnet18', snapshot=None, cuda=True):
-    net = CRNN(abc=abc, seq_proj=seq_proj, backend=backend)
+def load_model(input_size, abc, seq_proj=[0, 0], backend='resnet18', snapshot=None):
+    net = CRNN(input_size=input_size, abc=abc, seq_proj=seq_proj, backend=backend)
     net = nn.DataParallel(net)
     if snapshot is not None:
+        print ("Loading model from", snapshot)
         load_weights(net, torch.load(snapshot))
-    if cuda:
-        net = net.cuda()
+    net = net.cuda()
     return net

@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -5,79 +7,122 @@ from torch.autograd import Variable
 import torchvision.models as models
 import string
 import numpy as np
+from torch.nn import init
+
 
 class CRNN(nn.Module):
     def __init__(self,
-                 abc=string.digits,
-                 backend='resnet18',
-                 rnn_hidden_size=128,
-                 rnn_num_layers=2,
-                 rnn_dropout=0,
-                 seq_proj=[0, 0]):
+                 input_size,
+                 abc,
+                 backend,
+                 lstm_hidden_size=512,
+                 lstm_num_layers=2,
+                 lstm_dropout=0.25,
+                 seq_proj=[0, 0],
+                 ):
         super(CRNN, self).__init__()
 
         self.abc = abc
-        self.num_classes = len(self.abc)
-
-        self.feature_extractor = getattr(models, backend)(pretrained=True)
+        self.num_classes = len(self.abc) + 1 # include blank id = 0
+        self.input_size = input_size
+        feature_extractor = getattr(models, backend)(pretrained=True)
         self.cnn = nn.Sequential(
-            self.feature_extractor.conv1,
-            self.feature_extractor.bn1,
-            self.feature_extractor.relu,
-            self.feature_extractor.maxpool,
-            self.feature_extractor.layer1,
-            self.feature_extractor.layer2,
-            self.feature_extractor.layer3,
-            self.feature_extractor.layer4
+            feature_extractor.conv1,
+            feature_extractor.bn1,
+            feature_extractor.relu,
+            feature_extractor.maxpool,
+            feature_extractor.layer1,
+            feature_extractor.layer2,
+            feature_extractor.layer3,
+            # self.feature_extractor.layer4
         )
+        self.downrate = 2 ** 4
+        self.num_filter = 256
+        self.feature_dim = int(input_size[1] / self.downrate) * self.num_filter
+        self.lstm_input_size=256
+        self.lstm_num_layers = lstm_num_layers
+        self.lstm_hidden_size = lstm_hidden_size
 
-        self.fully_conv = seq_proj[0] == 0
-        if not self.fully_conv:
-            self.proj = nn.Conv2d(seq_proj[0], seq_proj[1], kernel_size=1)
+        # self.fully_conv = seq_proj[0] == 0
+        # if not self.fully_conv:
+        #     self.proj = nn.Conv2d(seq_proj[0], seq_proj[1], kernel_size=1)
+        # self.rnn = nn.LSTM(self.get_block_size(self.cnn),
 
-        self.rnn_hidden_size = rnn_hidden_size
-        self.rnn_num_layers = rnn_num_layers
-        self.rnn = nn.GRU(self.get_block_size(self.cnn),
-                          rnn_hidden_size, rnn_num_layers,
-                          batch_first=False,
-                          dropout=rnn_dropout, bidirectional=True)
-        self.linear = nn.Linear(rnn_hidden_size * 2, self.num_classes + 1)
+        self.lstm = nn.LSTM(self.lstm_input_size,
+                            lstm_hidden_size, self.lstm_num_layers,
+                            batch_first=False,
+                            dropout=lstm_dropout, bidirectional=True)
+
+       # transformation
+        self.cnn2lstm = nn.Sequential(
+            nn.Linear(self.feature_dim, self.lstm_input_size),
+            nn.ReLU(),
+        )
+        self.lstm2logit = nn.Linear(lstm_hidden_size * 2, self.num_classes)
         self.softmax = nn.Softmax(dim=2)
 
-    def forward(self, x, decode=False):
-        hidden = self.init_hidden(x.size(0), next(self.parameters()).is_cuda)
+        # (len, batch, dim)
+        self.log_softmax = nn.LogSoftmax(dim=2)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        gain = init.calculate_gain('relu')
+        # transformation
+        init.xavier_uniform_(self.cnn2lstm[0].weight, gain=gain)
+        init.constant_(self.cnn2lstm[0].bias, 0.)
+        init.xavier_uniform_(self.lstm2logit.weight, gain=gain)
+        init.constant_(self.lstm2logit.bias, 0.)
+
+        # lstm
+        for pname, pval in self.lstm.named_parameters():
+            if pname.startswith('weight'):
+                init.orthogonal_(pval)
+            else:
+                assert pname.startswith('bias')
+                init.constant_(pval, 0.)
+
+    def forward(self, x, decode=False, print_softmax=False):
         features = self.cnn(x)
         features = self.features_to_sequence(features)
-        seq, hidden = self.rnn(features, hidden)
-        seq = self.linear(seq)
+        seq, hidden = self.lstm(features)
+        seq = self.lstm2logit(seq)
         if not self.training:
             seq = self.softmax(seq)
             if decode:
                 seq = self.decode(seq)
+        else:
+            softmax = self.softmax(seq)
+            seq = self.log_softmax(seq)
+            if print_softmax:
+                seq = seq, softmax
         return seq
 
-    def init_hidden(self, batch_size, gpu=False):
-        h0 = Variable(torch.zeros( self.rnn_num_layers * 2,
-                                   batch_size,
-                                   self.rnn_hidden_size))
-        if gpu:
-            h0 = h0.cuda()
-        return h0
+    # def init_hidden(self, batch_size, gpu=False):
+    #     h0 = Variable(torch.zeros(self.lstm_num_layers * 2,
+    #                               batch_size,
+    #                               self.lstm_hidden_size))
+    #     h0 = h0.cuda()
+    #     return h0
 
     def features_to_sequence(self, features):
-        b, c, h, w = features.size()
-        assert h == 1, "the height of out must be 1"
-        if not self.fully_conv:
-            features = features.permute(0, 3, 2, 1)
-            features = self.proj(features)
-            features = features.permute(1, 0, 2, 3)
-        else:
-            features = features.permute(3, 0, 2, 1)
-        features = features.squeeze(2)
+        # b, c, h, w = features.size()
+        # assert h == 1, "the height of out must be 1"
+        # if not self.fully_conv:
+        #     features = features.permute(0, 3, 2, 1) # (b, w, h, c)
+        #     features = self.proj(features)
+        #     features = features.permute(1, 0, 2, 3) # (w, b, h, c)
+        # else:
+        #     features = features.permute(3, 0, 2, 1) # (w, b, h, c)
+        # features = features.squeeze(2)
+
+        features = features.permute(3, 0, 2, 1) # (w, b, h, c)
+        features = features.contiguous().view(features.size()[0], features.size()[1], -1)  # (w, b, h * c)
+        features = self.cnn2lstm(features) # (w, b, rnn_input)
+        # (w, b, feature_map)
         return features
 
-    def get_block_size(self, layer):
-        return layer[-1][-1].bn2.weight.size()[0]
+    # def get_block_size(self, layer):
+    #     return layer[-1][-1].bn2.weight.size()[0]
 
     def pred_to_string(self, pred):
         seq = []

@@ -1,3 +1,5 @@
+import random
+
 import os
 import cv2
 import string
@@ -18,43 +20,50 @@ from torchvision.transforms import Compose
 
 import editdistance
 
-def test(net, data, abc, cuda, visualize, batch_size=256):
-    data_loader = DataLoader(data, batch_size=batch_size, num_workers=4, shuffle=False, collate_fn=text_collate)
-
-    count = 0
+def test(net, data, abc, visualize, batch_size, num_workers=0):
+    data_loader = DataLoader(data, batch_size=batch_size,
+                             num_workers=num_workers, shuffle=False, collate_fn=text_collate)
+    # count = 0
     tp = 0
     avg_ed = 0
+    log = []
+    net = net.eval()
     iterator = tqdm(data_loader)
-    for sample in iterator:
-        imgs = Variable(sample["img"])
-        if cuda:
+    with torch.no_grad():
+        for sample in iterator:
+            imgs = Variable(sample["img"])
             imgs = imgs.cuda()
-        out = net(imgs, decode=True)
-        gt = (sample["seq"].numpy() - 1).tolist()
-        lens = sample["seq_len"].numpy().tolist()
-        pos = 0
-        key = ''
-        for i in range(len(out)):
-            gts = ''.join(abc[c] for c in gt[pos:pos+lens[i]])
-            pos += lens[i]
-            if gts == out[i]:
-                tp += 1
-            else:
-                avg_ed += editdistance.eval(out[i], gts)
-            count += 1
-            if visualize:
-                status = "pred: {}; gt: {}".format(out[i], gts)
-                iterator.set_description(status)
-                img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
-                cv2.imshow("img", img)
-                key = chr(cv2.waitKey() & 255)
-                if key == 'q':
-                    break
-        if key == 'q':
-            break
-        if not visualize:
-            iterator.set_description("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
+            out = net(imgs, decode=True)
+            gt = (sample["seq"].numpy() - 1).tolist()
+            lens = sample["seq_len"].numpy().tolist()
+            pos = 0
+            # key = ''
+            for i in range(len(out)):
+                gts = ''.join(abc[c] for c in gt[pos:pos+lens[i]])
+                pos += lens[i]
+                if gts == out[i]:
+                    tp += 1
+                else:
+                    avg_ed += editdistance.eval(out[i], gts) / max(len(gts), len(out[i]))
+                # count += 1
+                if visualize:
+                    if random.random() < 0.01:
+                        log.append("pred: {}; gt: {}".format(out[i], gts))
 
+                    # iterator.set_description(status)
+                    # img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
+                    # cv2.imshow("img", img)
+                    # key = chr(cv2.waitKey() & 255)
+                    # if key == 'q':
+                    #     break
+            # if key == 'q':
+            #     break
+            # if not visualize:
+            #     iterator.set_description("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
+            # print ("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
+
+    for mess in log: print (mess)
+    count = len(out)
     acc = tp / count
     avg_ed = avg_ed / count
     return acc, avg_ed
@@ -69,8 +78,8 @@ def test(net, data, abc, cuda, visualize, batch_size=256):
 @click.option('--gpu', type=str, default='0', help='List of GPUs for parallel training, e.g. 0,1,2,3')
 @click.option('--visualize', type=bool, default=False, help='Visualize output')
 def main(data_path, abc, seq_proj, backend, snapshot, input_size, gpu, visualize):
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu
-    cuda = True if gpu is not '' else False
+    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+    # cuda = True if gpu is not '' else False
 
     input_size = [int(x) for x in input_size.split('x')]
     transform = Compose([
@@ -82,8 +91,8 @@ def main(data_path, abc, seq_proj, backend, snapshot, input_size, gpu, visualize
     else:
         data = TestDataset(transform=transform, abc=abc)
     seq_proj = [int(x) for x in seq_proj.split('x')]
-    net = load_model(data.get_abc(), seq_proj, backend, snapshot, cuda).eval()
-    acc, avg_ed = test(net, data, data.get_abc(), cuda, visualize)
+    net = load_model(data.get_abc(), seq_proj, backend, snapshot).eval()
+    acc, avg_ed = test(net, data, data.get_abc(), visualize)
     print("Accuracy: {}".format(acc))
     print("Edit distance: {}".format(avg_ed))
 
