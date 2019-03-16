@@ -23,9 +23,9 @@ import editdistance
 def test(net, data, abc, visualize, batch_size, num_workers=0):
     data_loader = DataLoader(data, batch_size=batch_size,
                              num_workers=num_workers, shuffle=False, collate_fn=text_collate)
-    # count = 0
+    num_instance = 0
     tp = 0
-    avg_ed = 0
+    sum_ed = 0
     log = []
     net = net.eval()
     iterator = tqdm(data_loader)
@@ -41,15 +41,18 @@ def test(net, data, abc, visualize, batch_size, num_workers=0):
             for i in range(len(out)):
                 gts = ''.join(abc[c] for c in gt[pos:pos+lens[i]])
                 pos += lens[i]
+                cur_dist = 0
                 if gts == out[i]:
                     tp += 1
                 else:
-                    avg_ed += editdistance.eval(out[i], gts) / max(len(gts), len(out[i]))
-                # count += 1
-                if visualize:
-                    if random.random() < 0.01:
-                        log.append("pred: {}; gt: {}".format(out[i], gts))
+                    cur_dist = editdistance.eval(out[i], gts) / max(len(gts), len(out[i]))
+                    sum_ed += cur_dist
 
+                num_instance += 1
+                if visualize:
+                    log.append((sample["name"][i], out[i], gts, cur_dist))
+                    # if random.random() < 0.01:
+                    #     log.append("pred: {}; gt: {}; dist: {}".format(out[i], gts, cur_dist))
                     # iterator.set_description(status)
                     # img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
                     # cv2.imshow("img", img)
@@ -62,10 +65,16 @@ def test(net, data, abc, visualize, batch_size, num_workers=0):
             #     iterator.set_description("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
             # print ("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
 
-    for mess in log: print (mess)
-    count = len(out)
-    acc = tp / count
-    avg_ed = avg_ed / count
+    eds = None
+    if visualize:
+        log = sorted(log, key=lambda tuple: tuple[3], reverse=True)
+        for mess in log[:10]: print (mess)
+        eds = [x[3] for x in log]
+
+    acc = tp / num_instance
+    avg_ed = sum_ed / num_instance
+    if visualize:
+        assert np.isclose(avg_ed, np.mean(eds))
     return acc, avg_ed
 
 @click.command()

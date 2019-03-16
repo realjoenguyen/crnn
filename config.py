@@ -15,7 +15,12 @@ batch_size = 100
 output_dir = "/root/crnn/crnn_simple/out"
 dev_epoch = 5
 dev_init = True
+num_filter = 256
 
+lstm_input_size = 256
+lstm_hidden_size = 512
+lstm_num_layers = 2
+dropout = 0.25
 
 # @click.command()
 # @click.option('--data-path', type=str, default=None, help='Path to dataset')

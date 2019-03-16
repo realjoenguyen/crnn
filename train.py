@@ -28,10 +28,10 @@ def main():
         Rotation(),
         Resize(size=(input_size[0], input_size[1]), data_augmen=True)
     ])
-    if config.data_path is not None:
-        data = TextDataset(data_path=config.data_path, mode="train", transform=transform)
-    else:
-        data = TestDataset(transform=transform, abc=config.abc)
+    # if config.data_path is not None:
+    data = TextDataset(data_path=config.data_path, mode="train", transform=transform)
+    # else:
+    #     data = TestDataset(transform=transform, abc=config.abc)
 
     # seq_proj = [int(x) for x in seq_proj.split('x')]
     net = load_model(input_size, data.get_abc(), None, config.backend, config.snapshot)
@@ -63,6 +63,14 @@ def main():
         #                                                       "crnn_" + config.backend + "_best"))
         #         avg_ed_best = avg_ed
         #     print("avg_ed: {}; avg_ed_best: {}".format(avg_ed, avg_ed_best))
+
+        # test dev phrase
+        if epoch_count == 0:
+            print("dev phase")
+            data.set_mode("test")
+            acc, avg_ed = test(net, data, data.get_abc(), visualize=True,
+                             batch_size=config.batch_size, num_workers=0)
+            print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
 
         net = net.train()
         data.set_mode("train")
@@ -100,7 +108,7 @@ def main():
 
         print("dev phase")
         data.set_mode("test")
-        _, avg_ed = test(net, data, data.get_abc(), visualize=True,
+        acc, avg_ed = test(net, data, data.get_abc(), visualize=True,
                            batch_size=config.batch_size, num_workers=0)
 
         if avg_ed < avg_ed_best:
@@ -111,7 +119,7 @@ def main():
                                                       "crnn_" + config.backend + "_best"))
             avg_ed_best = avg_ed
 
-        print("avg_ed: {}; avg_ed_best: {}".format(avg_ed, avg_ed_best))
+        print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
         print ("epoch: {}; loss_mean: {}".format(epoch_count, np.mean(loss_mean)))
         lr_scheduler.step(avg_ed)
         epoch_count += 1
