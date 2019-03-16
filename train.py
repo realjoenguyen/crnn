@@ -121,6 +121,7 @@ def main():
 
         print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
         print ("epoch: {}; loss_mean: {}".format(epoch_count, np.mean(loss_mean)))
+        # TODO: add tensorboard to visualize loss_mean & avg_ed & acc
         lr_scheduler.step(avg_ed)
         epoch_count += 1
 
