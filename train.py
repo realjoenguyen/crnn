@@ -41,7 +41,7 @@ def main():
     lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.7, patience=5, verbose=True)
     loss_function = CTCLoss()
 
-    avg_ed_best = float("inf")
+    dev_avg_ed_best = float("inf")
     epoch_count = 0
     print ("Start training ...")
 
@@ -68,9 +68,9 @@ def main():
         if epoch_count == 0:
             print("dev phase")
             data.set_mode("test")
-            acc, avg_ed = test(net, data, data.get_abc(), visualize=True,
+            acc, dev_avg_ed = test(net, data, data.get_abc(), visualize=True,
                              batch_size=config.batch_size, num_workers=0)
-            print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
+            print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))
 
         net = net.train()
         data.set_mode("train")
@@ -108,23 +108,23 @@ def main():
 
         print("dev phase")
         data.set_mode("test")
-        acc, avg_ed = test(net, data, data.get_abc(), visualize=True,
+        acc, dev_avg_ed = test(net, data, data.get_abc(), visualize=True,
                            batch_size=config.batch_size, num_workers=0)
 
-        if avg_ed < avg_ed_best:
+        if dev_avg_ed < dev_avg_ed_best:
             assert config.output_dir is not None
             torch.save(net.state_dict(), os.path.join(config.output_dir,
                                                       "crnn_" + config.backend + "_best"))
             print ("Saving best model to", os.path.join(config.output_dir,
                                                       "crnn_" + config.backend + "_best"))
-            avg_ed_best = avg_ed
+            dev_avg_ed_best = dev_avg_ed
 
         # TODO: print avg_ed & acc in train epoch
         print ("train: epoch: {}; loss_mean: {}".format(epoch_count, np.mean(loss_mean)))
-        print ("dev: acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
+        print ("dev: acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))
 
         # TODO: add tensorboard to visualize loss_mean & avg_ed & acc
-        lr_scheduler.step(avg_ed)
+        lr_scheduler.step(dev_avg_ed)
         epoch_count += 1
 
 if __name__ == '__main__':
