@@ -119,8 +119,10 @@ def main():
                                                       "crnn_" + config.backend + "_best"))
             avg_ed_best = avg_ed
 
-        print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
-        print ("epoch: {}; loss_mean: {}".format(epoch_count, np.mean(loss_mean)))
+        # TODO: print avg_ed & acc in train epoch
+        print ("train: epoch: {}; loss_mean: {}".format(epoch_count, np.mean(loss_mean)))
+        print ("dev: acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, avg_ed, avg_ed_best))
+
         # TODO: add tensorboard to visualize loss_mean & avg_ed & acc
         lr_scheduler.step(avg_ed)
         epoch_count += 1
