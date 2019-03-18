@@ -4,15 +4,15 @@ from torch.utils.data import Dataset
 import json
 import os
 import cv2
-from config import json_path
+from config import json_file_path
 
 class TextDataset(Dataset):
     def __init__(self, data_path, mode="train", transform=None):
         super().__init__()
         self.data_path = data_path
         self.mode = mode
-        print ('Open config file from', os.path.join(json_path, "desc.json"))
-        self.config = json.load(open(os.path.join(json_path, "desc.json"), encoding='utf-8'))
+        print ('Open config file from', json_file_path)
+        self.config = json.load(open(json_file_path, encoding='utf-8'))
         self.transform = transform
 
     def get_abc(self):

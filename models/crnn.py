@@ -5,19 +5,18 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 import torchvision.models as models
-import string
 import numpy as np
 from torch.nn import init
-
+import config
 
 class CRNN(nn.Module):
     def __init__(self,
                  input_size,
                  abc,
                  backend,
-                 lstm_hidden_size=512,
-                 lstm_num_layers=2,
-                 lstm_dropout=0.25,
+                 lstm_hidden_size=config.lstm_hidden_size,
+                 lstm_num_layers=config.lstm_num_layers,
+                 lstm_dropout=config.dropout,
                  seq_proj=[0, 0],
                  ):
         super(CRNN, self).__init__()
@@ -37,9 +36,9 @@ class CRNN(nn.Module):
             # self.feature_extractor.layer4
         )
         self.downrate = 2 ** 4
-        self.num_filter = 256
+        self.num_filter = config.num_filter
         self.feature_dim = int(input_size[1] / self.downrate) * self.num_filter
-        self.lstm_input_size=256
+        self.lstm_input_size= config.lstm_input_size
         self.lstm_num_layers = lstm_num_layers
         self.lstm_hidden_size = lstm_hidden_size
 
@@ -82,7 +81,8 @@ class CRNN(nn.Module):
                 init.constant_(pval, 0.)
 
     def forward(self, x, decode=False, print_softmax=False):
-        features = self.cnn(x)
+        # x = (b, c, input_h, input_w)
+        features = self.cnn(x) # (b, c, h, w)
         # TODO: add attention on top of CNN
         features = self.features_to_sequence(features)
         seq, hidden = self.lstm(features)

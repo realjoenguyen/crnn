@@ -1,16 +1,16 @@
-import random
+import csv
+import cv2
 
 import os
-import cv2
-import string
+
 from tqdm import tqdm
-import click
 import numpy as np
 
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
+import config
 from dataset.test_data import TestDataset
 from dataset.text_data import TextDataset
 from dataset.collate_fn import text_collate
@@ -20,7 +20,13 @@ from torchvision.transforms import Compose
 
 import editdistance
 
-def test(net, data, abc, visualize, batch_size, num_workers=0):
+from ulti import Timing
+
+
+def test(net, data, abc, visualize, batch_size, num_workers=0,
+         output_csv=False, output_image=False):
+
+    assert data.mode != "train"
     data_loader = DataLoader(data, batch_size=batch_size,
                              num_workers=num_workers, shuffle=False, collate_fn=text_collate)
     num_instance = 0
@@ -51,6 +57,16 @@ def test(net, data, abc, visualize, batch_size, num_workers=0):
                 num_instance += 1
                 if visualize:
                     log.append((sample["name"][i], out[i], gts, cur_dist))
+
+                if output_image:
+                    output_image_dir = os.path.join(config.output_dir, "input_images")
+                    if not os.path.exists(output_image_dir):
+                        print ("Creating output_image_dir")
+                        os.makedirs(output_image_dir, exist_ok=True)
+
+                    img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
+                    cv2.imwrite(os.path.join(output_image_dir, sample["name"][i]), img)
+
                     # if random.random() < 0.01:
                     #     log.append("pred: {}; gt: {}; dist: {}".format(out[i], gts, cur_dist))
                     # iterator.set_description(status)
@@ -71,37 +87,49 @@ def test(net, data, abc, visualize, batch_size, num_workers=0):
         for mess in log[:10]: print (mess)
         eds = [x[3] for x in log]
 
+    with Timing("Write csv file"):
+        if output_csv:
+            csv_file = open(os.path.join(config.output_dir, "output.csv"), "w")
+            csv_writer = csv.writer(csv_file)
+            for row in log:
+                csv_writer.writerow(row)
+
     acc = tp / num_instance
     avg_ed = sum_ed / num_instance
     if visualize:
         assert np.isclose(avg_ed, np.mean(eds))
     return acc, avg_ed
 
-@click.command()
-@click.option('--data-path', type=str, default=None, help='Path to dataset')
-@click.option('--abc', type=str, default=string.digits+string.ascii_uppercase, help='Alphabet')
-@click.option('--seq-proj', type=str, default="10x20", help='Projection of sequence')
-@click.option('--backend', type=str, default="resnet18", help='Backend network')
-@click.option('--snapshot', type=str, default=None, help='Pre-trained weights')
-@click.option('--input-size', type=str, default="320x32", help='Input size')
-@click.option('--gpu', type=str, default='0', help='List of GPUs for parallel training, e.g. 0,1,2,3')
-@click.option('--visualize', type=bool, default=False, help='Visualize output')
-def main(data_path, abc, seq_proj, backend, snapshot, input_size, gpu, visualize):
-    # os.environ["CUDA_VISIBLE_DEVICES"] = gpu
-    # cuda = True if gpu is not '' else False
+# @click.command()
+# @click.option('--data-path', type=str, default=None, help='Path to dataset')
+# @click.option('--abc', type=str, default=string.digits+string.ascii_uppercase, help='Alphabet')
+# @click.option('--seq-proj', type=str, default="10x20", help='Projection of sequence')
+# @click.option('--backend', type=str, default="resnet18", help='Backend network')
+# @click.option('--snapshot', type=str, default=None, help='Pre-trained weights')
+# @click.option('--input-size', type=str, default="320x32", help='Input size')
+# @click.option('--gpu', type=str, default='0', help='List of GPUs for parallel training, e.g. 0,1,2,3')
+# @click.option('--visualize', type=bool, default=False, help='Visualize output')
 
-    input_size = [int(x) for x in input_size.split('x')]
+def main():
+    input_size = [int(x) for x in config.input_size.split('x')]
     transform = Compose([
         Rotation(),
         Resize(size=(input_size[0], input_size[1]))
     ])
-    if data_path is not None:
-        data = TextDataset(data_path=data_path, mode="test", transform=transform)
-    else:
-        data = TestDataset(transform=transform, abc=abc)
-    seq_proj = [int(x) for x in seq_proj.split('x')]
-    net = load_model(data.get_abc(), seq_proj, backend, snapshot).eval()
-    acc, avg_ed = test(net, data, data.get_abc(), visualize)
+    # if data_path is not None:
+    data = TextDataset(data_path=config.test_path, mode=config.test_mode, transform=transform)
+    # else:
+    #     data = TestDataset(transform=transform, abc=abc)
+    # seq_proj = [int(x) for x in config.seq_proj.split('x')]
+
+    input_size = [int(x) for x in config.input_size.split('x')]
+    net = load_model(input_size, data.get_abc(), None, config.backend, config.snapshot).eval()
+
+    assert data.mode == config.test_mode
+    acc, avg_ed = test(net, data, data.get_abc(), visualize=True,
+                       batch_size=config.batch_size, num_workers=0,
+                       output_csv=True, output_image=True)
+
     print("Accuracy: {}".format(acc))
     print("Edit distance: {}".format(avg_ed))
 

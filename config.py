@@ -1,10 +1,16 @@
-json_path = '/root/TA/data/'
+
+
 dau_cau ="àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳỵỷỹýÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲỴỶỸÝ"
 abc = dau_cau + "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;?@[\\]^_`{|}~ "
 # no duplicate char
 assert len(set(abc)) == len(abc)
 
-data_path = "/root/TA/data/clean/train_dev/"
+train_dev_path = "/root/TA/data/clean/train_dev/"
+test_path = "/root/TA/data/clean/test_annotated/"
+# json_file_path = "/root/TA/data/ocr_json/desc.json"
+json_file_path = "desc.json"
+test_mode = "test_annotated"
+
 backend = "resnet18"
 snapshot = "/root/crnn/crnn_simple/out/crnn_resnet18_best"
 input_size = "1920x128"

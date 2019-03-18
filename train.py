@@ -18,7 +18,7 @@ from torch.nn import CTCLoss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import config
-from test import test
+from inference import test
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
         Resize(size=(input_size[0], input_size[1]), data_augmen=True)
     ])
     # if config.data_path is not None:
-    data = TextDataset(data_path=config.data_path, mode="train", transform=transform)
+    data = TextDataset(data_path=config.train_dev_path, mode="train", transform=transform)
     # else:
     #     data = TestDataset(transform=transform, abc=config.abc)
 
@@ -43,7 +43,7 @@ def main():
 
     dev_avg_ed_best = float("inf")
     epoch_count = 0
-    print ("Start training ...")
+    print ("Start running ...")
 
     while True:
         # if (config.dev_epoch is not None and epoch_count != 0 and epoch_count % config.dev_epoch == 0) or (config.dev_init and epoch_count == 0):
@@ -67,7 +67,7 @@ def main():
         # test dev phrase
         if epoch_count == 0:
             print("dev phase")
-            data.set_mode("test")
+            data.set_mode("dev")
             acc, dev_avg_ed = test(net, data, data.get_abc(), visualize=True,
                              batch_size=config.batch_size, num_workers=0)
             print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))
@@ -107,7 +107,7 @@ def main():
             optimizer.step()
 
         print("dev phase")
-        data.set_mode("test")
+        data.set_mode("dev")
         acc, dev_avg_ed = test(net, data, data.get_abc(), visualize=True,
                            batch_size=config.batch_size, num_workers=0)
 
