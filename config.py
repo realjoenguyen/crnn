@@ -1,4 +1,4 @@
-
+import os
 
 dau_cau ="àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳỵỷỹýÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲỴỶỸÝ"
 abc = dau_cau + "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;?@[\\]^_`{|}~ "
@@ -7,7 +7,13 @@ assert len(set(abc)) == len(abc)
 
 train_dev_path = "/root/TA/data/clean/train_dev/"
 test_path = "/root/TA/data/clean/test/"
-json_file_path = "desc.json"
+
+current_path = os.path.dirname(__file__)
+json_file_path = os.path.join(current_path, "desc.json")
+backend = "resnet18"
+snapshot = os.path.join(current_path, "out/crnn_resnet18_best")
+output_dir = os.path.join(current_path, "out")
+
 test_mode = "test"
 
 # logging
@@ -15,16 +21,12 @@ num_write_input_img = 30
 output_csv = False
 output_image = True
 
-backend = "resnet18"
-snapshot = "/root/crnn/crnn_simple/out/crnn_resnet18_best"
 input_size = "1920x128"
 base_lr = 1e-3
 step_size=500
 max_iter  = 6000
 batch_size = 100
-output_dir = "/root/crnn/crnn_simple/out"
-dev_epoch = 5
-dev_init = True
+
 num_filter = 256
 
 lstm_input_size = 256
