@@ -4,6 +4,8 @@ import numpy as np
 import cv2
 import torch
 import config
+from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage.filters import gaussian_filter
 
 class ToTensor(object):
     def __call__(self, sample):
@@ -107,3 +109,27 @@ class Scale(object):
         transform = np.float32([[scale, 0, 0],[0, scale, 0]])
         sample["img"] = cv2.warpAffine(sample["img"], transform, (w,h), borderValue = self.fill_value)
         return sample
+
+class ElasticTransform(object):
+    def __init__(self, alpha = 1201, sigma = 10, random_state = None):
+        self.alpha = alpha
+        self.sigma = sigma
+        self.random_state = random_state
+
+    def __call__(self, sample):
+        if self.random_state is None:
+            random_state = np.random.RandomState(None)
+
+        img = sample['img']
+        shape = img.shape
+        dx = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * self.alpha
+        dy = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * self.alpha
+        # dz = np.zeros_like(dx)
+
+        # x, y, z = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]), np.arange(shape[2]))
+        x, y, z = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]), np.arange(shape[2]))
+        print(x.shape)
+        indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1)), np.reshape(z, (-1, 1))
+
+        distored_image = map_coordinates(img, indices, order=1, mode='reflect')
+        return distored_image.reshape(img.shape)
