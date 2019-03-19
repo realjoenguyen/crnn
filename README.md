@@ -11,7 +11,7 @@ Test: `python inference.py`
 
 # Requirements 
 1. Create new virtualenv 
-2. `pip install -r requirements.txt' `   
+2. `pip install -r requirements.txt`   
 
 # Config 
 Use on server 8082. No need to change config. Data path is already available. 
