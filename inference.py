@@ -25,7 +25,6 @@ from ulti import Timing
 
 def test(net, data, abc, visualize, batch_size, num_workers=0,
          output_csv=False, output_image=False):
-
     assert data.mode != "train"
     data_loader = DataLoader(data, batch_size=batch_size,
                              num_workers=num_workers, shuffle=False, collate_fn=text_collate)
@@ -34,6 +33,13 @@ def test(net, data, abc, visualize, batch_size, num_workers=0,
     sum_ed = 0
     log = []
     net = net.eval()
+    output_image_dir = None
+    if output_image:
+        output_image_dir = os.path.join(config.output_dir, "input_images")
+        if not os.path.exists(output_image_dir):
+            print("Creating output_image_dir")
+            os.makedirs(output_image_dir, exist_ok=True)
+
     iterator = tqdm(data_loader)
     with torch.no_grad():
         for sample in iterator:
@@ -55,44 +61,32 @@ def test(net, data, abc, visualize, batch_size, num_workers=0,
                     sum_ed += cur_dist
 
                 num_instance += 1
-                if visualize:
-                    log.append((sample["name"][i], out[i], gts, cur_dist))
-
+                img = None
                 if output_image:
-                    output_image_dir = os.path.join(config.output_dir, "input_images")
-                    if not os.path.exists(output_image_dir):
-                        print ("Creating output_image_dir")
-                        os.makedirs(output_image_dir, exist_ok=True)
-
                     img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
-                    cv2.imwrite(os.path.join(output_image_dir, sample["name"][i]), img)
 
-                    # if random.random() < 0.01:
-                    #     log.append("pred: {}; gt: {}; dist: {}".format(out[i], gts, cur_dist))
-                    # iterator.set_description(status)
-                    # img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
-                    # cv2.imshow("img", img)
-                    # key = chr(cv2.waitKey() & 255)
-                    # if key == 'q':
-                    #     break
-            # if key == 'q':
-            #     break
-            # if not visualize:
-            #     iterator.set_description("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
-            # print ("acc: {0:.4f}; avg_ed: {0:.4f}".format(tp / count, avg_ed / count))
+                if visualize:
+                    log.append((sample["name"][i], out[i], gts, cur_dist, img))
 
     eds = None
     if visualize:
+        # print wrongest instances
         log = sorted(log, key=lambda tuple: tuple[3], reverse=True)
-        for mess in log[:10]: print (mess)
+        for name, pred, gt, dist, _ in log[:10]:
+            print (name, pred, gt, dist)
         eds = [x[3] for x in log]
+
+    if output_image:
+        with Timing("Write input_images"):
+            for name, _, _, _, img in log[:config.num_write_input_img]:
+                cv2.imwrite(os.path.join(output_image_dir, name), img)
 
     with Timing("Write csv file"):
         if output_csv:
             csv_file = open(os.path.join(config.output_dir, "output.csv"), "w")
             csv_writer = csv.writer(csv_file)
-            for row in log:
-                csv_writer.writerow(row)
+            for name, pred, gt, dist, _ in log:
+                csv_writer.writerow(name, pred, gt, dist)
 
     acc = tp / num_instance
     avg_ed = sum_ed / num_instance
@@ -128,7 +122,7 @@ def main():
     assert data.mode == config.test_mode
     acc, avg_ed = test(net, data, data.get_abc(), visualize=True,
                        batch_size=config.batch_size, num_workers=0,
-                       output_csv=True, output_image=True)
+                       output_csv=config.output_csv, output_image=config.output_image)
 
     print("Accuracy: {}".format(acc))
     print("Edit distance: {}".format(avg_ed))

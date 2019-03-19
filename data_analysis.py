@@ -1,8 +1,6 @@
 import json
-import os
 
-from config import json_path
-json_file_path = os.path.join(json_path, "desc.json")
+from config import json_file_path
 a = json.load(open(json_file_path, encoding="utf-8"))
 
 def more_max_len(key, max_len):

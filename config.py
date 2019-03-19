@@ -6,10 +6,14 @@ abc = dau_cau + "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!
 assert len(set(abc)) == len(abc)
 
 train_dev_path = "/root/TA/data/clean/train_dev/"
-test_path = "/root/TA/data/clean/test_annotated/"
-# json_file_path = "/root/TA/data/ocr_json/desc.json"
+test_path = "/root/TA/data/clean/test/"
 json_file_path = "desc.json"
-test_mode = "test_annotated"
+test_mode = "test"
+
+# logging
+num_write_input_img = 30
+output_csv = False
+output_image = True
 
 backend = "resnet18"
 snapshot = "/root/crnn/crnn_simple/out/crnn_resnet18_best"
