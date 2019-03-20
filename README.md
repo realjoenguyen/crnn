@@ -10,7 +10,7 @@ Train & dev: `python train.py`
 Test: `python inference.py`
 
 # Requirements 
-1. Create new virtualenv (p
+1. Create new virtualenv (python3) 
 2. `pip install -r requirements.txt`   
 
 # Config 
