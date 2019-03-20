@@ -111,7 +111,7 @@ class Scale(object):
         return sample
 
 class ElasticTransform(object):
-    def __init__(self, alpha = 1201, sigma = 10, random_state = None):
+    def __init__(self, alpha = random.randint(1200,2500), sigma = 10, random_state = None):
         self.alpha = alpha
         self.sigma = sigma
         self.random_state = random_state
