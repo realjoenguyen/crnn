@@ -112,12 +112,7 @@ def main():
         Rotation(),
         Resize(size=(input_size[0], input_size[1]))
     ])
-    # if data_path is not None:
     data = TextDataset(data_path=config.test_path, mode=config.test_mode, transform=transform)
-    # else:
-    #     data = TestDataset(transform=transform, abc=abc)
-    # seq_proj = [int(x) for x in config.seq_proj.split('x')]
-
     input_size = [int(x) for x in config.input_size.split('x')]
     net = load_model(input_size, data.get_abc(), None, config.backend, config.snapshot).eval()
 

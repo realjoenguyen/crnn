@@ -68,8 +68,8 @@ class CRNN(nn.Module):
     def reset_parameters(self):
         gain = init.calculate_gain('relu')
         # transformation
-        init.xavier_uniform_(self.cnn2lstm[0].weight, gain=gain)
-        init.constant_(self.cnn2lstm[0].bias, 0.)
+        init.xavier_uniform_(self.cnn2lstm[1].weight, gain=gain)
+        init.constant_(self.cnn2lstm[1].bias, 0.)
         init.xavier_uniform_(self.lstm2logit.weight, gain=gain)
         init.constant_(self.lstm2logit.bias, 0.)
 

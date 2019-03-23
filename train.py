@@ -34,6 +34,7 @@ def main():
     train_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
     print ("# of parameters =", total_params)
     print ("# of non-training parameters =", total_params - train_total_params)
+    print("")
 
     optimizer = optim.Adam(net.parameters(), lr = config.base_lr)
     lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.7, patience=5, verbose=True)
@@ -41,28 +42,9 @@ def main():
 
     dev_avg_ed_best = float("inf")
     epoch_count = 0
-    print ("")
     print ("Start running ...")
 
     while True:
-        # if (config.dev_epoch is not None and epoch_count != 0 and epoch_count % config.dev_epoch == 0) or (config.dev_init and epoch_count == 0):
-        #     print("dev phase")
-        #     data.set_mode("test")
-        #     net = net.eval()
-        #     _, avg_ed = test(net, data, data.get_abc(), cuda, visualize=True,
-        #                        batch_size=config.batch_size, num_workers=0)
-        #
-        #     net = net.train()
-        #     data.set_mode("train")
-        #     if avg_ed > avg_ed_best:
-        #         if config.output_dir is not None:
-        #             torch.save(net.state_dict(), os.path.join(config.output_dir,
-        #                                                       "crnn_" + config.backend + "_best"))
-        #             print ("Saving best model to", os.path.join(config.output_dir,
-        #                                                       "crnn_" + config.backend + "_best"))
-        #         avg_ed_best = avg_ed
-        #     print("avg_ed: {}; avg_ed_best: {}".format(avg_ed, avg_ed_best))
-
         # test dev phrase
         if epoch_count == 0:
             print("dev phase")
