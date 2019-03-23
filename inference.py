@@ -1,4 +1,6 @@
 import csv
+from typing import List
+
 import cv2
 
 import os
@@ -11,7 +13,6 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 import config
-from dataset.test_data import TestDataset
 from dataset.text_data import TextDataset
 from dataset.collate_fn import text_collate
 from dataset.data_transform import Resize, Rotation, Translation, Scale
@@ -31,7 +32,7 @@ def test(net, data, abc, visualize, batch_size, num_workers=0,
     num_instance = 0
     tp = 0
     sum_ed = 0
-    log = []
+    log = [] # type: List[tuple]
     net = net.eval()
     output_image_dir = None
     if output_image:
@@ -104,6 +105,7 @@ def test(net, data, abc, visualize, batch_size, num_workers=0,
 # @click.option('--gpu', type=str, default='0', help='List of GPUs for parallel training, e.g. 0,1,2,3')
 # @click.option('--visualize', type=bool, default=False, help='Visualize output')
 
+
 def main():
     input_size = [int(x) for x in config.input_size.split('x')]
     transform = Compose([
@@ -126,6 +128,7 @@ def main():
 
     print("Accuracy: {}".format(acc))
     print("Edit distance: {}".format(avg_ed))
+
 
 if __name__ == '__main__':
     main()

@@ -13,13 +13,13 @@ class ToTensor(object):
 
 
 class Resize(object):
-    def __init__(self, size=(320, 32), data_augmen=False):
+    def __init__(self, size, data_augmen=False):
         self.size = size
         self.data_augmen = data_augmen
 
     def __call__(self, sample):
         img = sample["img"]
-        # cv2.imwrite(os.path.join(config.output_dir, sample["name"][:-4] + "_before.jpg"), img)
+        assert img is not None
 
         # increase dataset size by applying random stretches to the images
         if self.data_augmen:
@@ -55,7 +55,6 @@ class Resize(object):
         # visualize
         # print ("print sample to", os.path.join(config.output_dir, sample["name"]))
 
-        # cv2.imwrite(os.path.join(config.output_dir, sample["name"][:-4] + "_after.jpg"), target)
         sample["img"] = target
         return sample
 

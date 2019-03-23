@@ -28,21 +28,20 @@ def main():
         Rotation(),
         Resize(size=(input_size[0], input_size[1]), data_augmen=True)
     ])
-    # if config.data_path is not None:
     data = TextDataset(data_path=config.train_dev_path, mode="train", transform=transform)
-    # else:
-    #     data = TestDataset(transform=transform, abc=config.abc)
-
-    # seq_proj = [int(x) for x in seq_proj.split('x')]
     net = load_model(input_size, data.get_abc(), None, config.backend, config.snapshot)
+    total_params = sum(p.numel() for p in net.parameters())
+    train_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    print ("# of parameters =", total_params)
+    print ("# of non-training parameters =", total_params - train_total_params)
 
-    # optimizer = optim.Adam(net.parameters(), lr = config.base_lr, weight_decay=0.0001)
     optimizer = optim.Adam(net.parameters(), lr = config.base_lr)
     lr_scheduler = ReduceLROnPlateau(optimizer, factor=0.7, patience=5, verbose=True)
-    loss_function = CTCLoss()
+    loss_function = CTCLoss(blank=0)
 
     dev_avg_ed_best = float("inf")
     epoch_count = 0
+    print ("")
     print ("Start running ...")
 
     while True:

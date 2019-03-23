@@ -5,34 +5,44 @@ abc = dau_cau + "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!
 # no duplicate char
 assert len(set(abc)) == len(abc)
 
+# data
 train_dev_path = "/root/TA/data/clean/train_dev/"
-test_path = "/root/TA/data/clean/test/"
-
 current_path = os.path.dirname(__file__)
 json_file_path = os.path.join(current_path, "desc.json")
-backend = "resnet18"
-snapshot = os.path.join(current_path, "out/crnn_resnet18_best")
 output_dir = os.path.join(current_path, "out")
 
-test_mode = "test"
+test_mode = "test_annotated"
+# test_path = "/root/TA/data/clean/"
+test_path = os.path.join("/root/TA/data/clean/", test_mode)
+
+# basemodel
+backend = "resnet18"
+# snapshot = os.path.join(current_path, "out/crnn_resnet18_best")
+snapshot = os.path.join(current_path, "out/crnn_" + backend + "_best")
 
 # logging
 num_write_input_img = 30
 output_csv = False
 output_image = True
+output_transform = False
 
-input_size = "1920x128"
+# model config
+# input_size = "1920x128"
+input_size = "3840x128"
 base_lr = 1e-3
 step_size=500
 max_iter  = 6000
 batch_size = 100
+dropout = 0.25
 
+# CNN
 num_filter = 256
+downrate = 2 ** 4
 
-lstm_input_size = 256
+# LSTM
+lstm_input_size = 512
 lstm_hidden_size = 512
 lstm_num_layers = 2
-dropout = 0.25
 
 # @click.command()
 # @click.option('--data-path', type=str, default=None, help='Path to dataset')

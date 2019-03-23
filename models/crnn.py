@@ -25,7 +25,7 @@ class CRNN(nn.Module):
         self.num_classes = len(self.abc) + 1 # include blank id = 0
         self.input_size = input_size
         feature_extractor = getattr(models, backend)(pretrained=True)
-        self.cnn = nn.Sequential(
+        self.resnet18 = nn.Sequential(
             feature_extractor.conv1,
             feature_extractor.bn1,
             feature_extractor.relu,
@@ -33,9 +33,9 @@ class CRNN(nn.Module):
             feature_extractor.layer1,
             feature_extractor.layer2,
             feature_extractor.layer3,
-            # self.feature_extractor.layer4
+            # feature_extractor.layer4
         )
-        self.downrate = 2 ** 4
+        self.downrate = config.downrate
         self.num_filter = config.num_filter
         self.feature_dim = int(input_size[1] / self.downrate) * self.num_filter
         self.lstm_input_size= config.lstm_input_size
@@ -80,12 +80,18 @@ class CRNN(nn.Module):
                 assert pname.startswith('bias')
                 init.constant_(pval, 0.)
 
-    def forward(self, x, decode=False, print_softmax=False):
+    def forward(self, x, decode=False, debug=False):
         # x = (b, c, input_h, input_w)
-        features = self.cnn(x) # (b, c, h, w)
+        features = self.resnet18(x) # (b, c, h, w)
         # TODO: add attention on top of CNN
+
+        # (w, b, feature_map)
         features = self.features_to_sequence(features)
+
+        # seq = (w, b, 2 * dim)
         seq, hidden = self.lstm(features)
+
+        # seq = (w, b, num_class)
         seq = self.lstm2logit(seq)
         if not self.training:
             seq = self.softmax(seq)
@@ -94,7 +100,7 @@ class CRNN(nn.Module):
         else:
             softmax = self.softmax(seq)
             seq = self.log_softmax(seq)
-            if print_softmax:
+            if debug:
                 seq = seq, softmax
         return seq
 
@@ -119,13 +125,13 @@ class CRNN(nn.Module):
         features = features.permute(3, 0, 2, 1) # (w, b, h, c)
         features = features.contiguous().view(features.size()[0], features.size()[1], -1)  # (w, b, h * c)
         features = self.cnn2lstm(features) # (w, b, rnn_input)
-        # (w, b, feature_map)
         return features
 
     # def get_block_size(self, layer):
     #     return layer[-1][-1].bn2.weight.size()[0]
 
     def pred_to_string(self, pred):
+        # pred.shape = (w, dim)
         seq = []
         for i in range(pred.shape[0]):
             label = np.argmax(pred[i])
@@ -143,6 +149,7 @@ class CRNN(nn.Module):
 
     def decode(self, pred):
         # TODO: add this one https://github.com/githubharald/CTCDecoder
+        # (w, b, dim) -> (b, w, dim)
         pred = pred.permute(1, 0, 2).cpu().data.numpy()
         seq = []
         for i in range(pred.shape[0]):
