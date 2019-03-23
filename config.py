@@ -30,18 +30,16 @@ output_transform = False
 # input_size = "1920x128"
 input_size = "3840x128"
 base_lr = 1e-3
-step_size=500
-max_iter  = 6000
 batch_size = 100
 dropout = 0.25
 
 # CNN
-num_filter = 256
-downrate = 2 ** 4
+num_filter = 512
+downrate = 2 ** 5
 
 # LSTM
 lstm_input_size = 512
-lstm_hidden_size = 512
+lstm_hidden_size = 256
 lstm_num_layers = 2
 
 # @click.command()

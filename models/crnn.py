@@ -33,7 +33,7 @@ class CRNN(nn.Module):
             feature_extractor.layer1,
             feature_extractor.layer2,
             feature_extractor.layer3,
-            # feature_extractor.layer4
+            feature_extractor.layer4
         )
         self.downrate = config.downrate
         self.num_filter = config.num_filter
@@ -54,6 +54,7 @@ class CRNN(nn.Module):
 
        # transformation
         self.cnn2lstm = nn.Sequential(
+            nn.Dropout(config.dropout),
             nn.Linear(self.feature_dim, self.lstm_input_size),
             nn.ReLU(),
         )
