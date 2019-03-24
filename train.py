@@ -28,7 +28,7 @@ def main():
         Rotation(),
         Resize(size=(input_size[0], input_size[1]), data_augmen=True)
     ])
-    data = TextDataset(data_path=config.train_dev_path, mode="train", transform=transform)
+    data = TextDataset(data_path=config.test_path, mode="train", transform=transform)
     net = load_model(input_size, data.get_abc(), None, config.backend, config.snapshot)
     total_params = sum(p.numel() for p in net.parameters())
     train_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
@@ -48,7 +48,7 @@ def main():
         # test dev phrase
         if epoch_count == 0:
             print("dev phase")
-            data.set_mode("dev")
+            data.set_mode(config.test_mode)
             acc, dev_avg_ed = test(net, data, data.get_abc(), visualize=True,
                              batch_size=config.batch_size, num_workers=0)
             print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))

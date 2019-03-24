@@ -8,6 +8,7 @@ import torchvision.models as models
 import numpy as np
 from torch.nn import init
 import config
+from .attention import Attention
 
 class CRNN(nn.Module):
     def __init__(self,
@@ -61,6 +62,11 @@ class CRNN(nn.Module):
         self.lstm2logit = nn.Linear(lstm_hidden_size * 2, self.num_classes)
         self.softmax = nn.Softmax(dim=2)
 
+        self.dropout = nn.Dropout(p=config.dropout)
+
+        # seq_len should be the length of the sequence
+        self.attention = Attention(hidden_emb=lstm_hidden_size * 2, seq_len=self.feature_dim)
+
         # (len, batch, dim)
         self.log_softmax = nn.LogSoftmax(dim=2)
         self.reset_parameters()
@@ -92,8 +98,13 @@ class CRNN(nn.Module):
         # seq = (w, b, 2 * dim)
         seq, hidden = self.lstm(features)
 
+        attn_lstm_emb = self.attention(seq)
+        batch_size = attn_lstm_emb.shape[0]
+        attn_lstm_emb = attn_lstm_emb.view(batch_size, -1).contiguous()
+        attn_lstm_emb = self.dropout(attn_lstm_emb)
+
         # seq = (w, b, num_class)
-        seq = self.lstm2logit(seq)
+        seq = self.lstm2logit(attn_lstm_emb)
         if not self.training:
             seq = self.softmax(seq)
             if decode:
