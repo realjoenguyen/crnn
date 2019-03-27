@@ -58,51 +58,53 @@ def create_data(type_dataset):
 
     print ('Len =', len(data[type_dataset]))
     print ("Skip > 80 =", cnt)
-    print ("")
+    print ("") 
+
+def create_test_annotated(): 
+    # create test annotated
+    labels_test_annotated = {}
+    print ("Creating test_annotated")
+    with Timing("Create labels"):
+        f = open(labels_path["test_annotated"])
+        reader = csv.reader(f, delimiter=',')
+        for line in reader:
+            image_file_name = line[0]
+            ocr_text = line[1]
+            labels_test_annotated[image_file_name] = ocr_text
+
+    # with Timing("Create json infor"):
+    cnt = 0
+    lst_file = glob.glob(files_path["test_annotated"])
+    assert len(lst_file) > 0
+
+    for image_file_path in lst_file:
+        image_file_name = os.path.basename(image_file_path)
+
+        instance = {}
+        instance["name"] = image_file_name
+        instance["text"] = labels_test_annotated[image_file_name]
+
+        if len([e for e in list(instance["text"]) if e not in abc_vocab]) > 0:
+            # print ("NOT have in vocab")
+            print (instance["name"])
+            print (instance["text"])
+            # continue
+
+        if len(list(instance["text"])) > 80:
+            cnt += 1
+            print (instance["name"])
+            print (instance["text"])
+            # continue
+
+        data["test_annotated"].append(instance)
+
+    print ('Len =', len(data["test_annotated"]))
+    print ("Skip > 80 =", cnt)
 
 create_data("train")
 create_data("dev")
 create_data("test")
-
-# create test annotated
-labels_test_annotated = {}
-print ("Creating test_annotated")
-with Timing("Create labels"):
-    f = open(labels_path["test_annotated"])
-    reader = csv.reader(f, delimiter=',')
-    for line in reader:
-        image_file_name = line[0]
-        ocr_text = line[1]
-        labels_test_annotated[image_file_name] = ocr_text
-
-# with Timing("Create json infor"):
-cnt = 0
-lst_file = glob.glob(files_path["test_annotated"])
-assert len(lst_file) > 0
-
-for image_file_path in lst_file:
-    image_file_name = os.path.basename(image_file_path)
-
-    instance = {}
-    instance["name"] = image_file_name
-    instance["text"] = labels_test_annotated[image_file_name]
-
-    if len([e for e in list(instance["text"]) if e not in abc_vocab]) > 0:
-        # print ("NOT have in vocab")
-        print (instance["name"])
-        print (instance["text"])
-        # continue
-
-    if len(list(instance["text"])) > 80:
-        cnt += 1
-        print (instance["name"])
-        print (instance["text"])
-        # continue
-
-    data["test_annotated"].append(instance)
-
-print ('Len =', len(data["test_annotated"]))
-print ("Skip > 80 =", cnt)
+create_test_annotated() 
 
 with Timing("Dumping json"):
     with open("desc.json", "w") as outfile:
