@@ -16,14 +16,21 @@ sudo apt-get install libsm6 libxrender1 libfontconfig1 -y
 export LC_ALL="en_US.UTF-8"
 export LC_CTYPE="en_US.UTF-8" 
 sudo dpkg-reconfigure locales 
-# 149 3  
+# 149 3   
 sudo pip3 install virtualenv tensorflow-gpu torch numpy scikit-learn scipy nltk gensim pandas keras gdown opencv-python  
+sudo pip2 install torch 
+
 virtualenv -p python3 vTA   
 source ~/vTA/bin/activate
-pip install virtualenv tensorflow-gpu torch numpy scikit-learn scipy nltk gensim pandas keras gdown opencv-python torchvision jeditdistance
+pip install virtualenv tensorflow-gpu torch numpy scikit-learn scipy nltk gensim pandas keras gdown opencv-python torchvision editdistance pytorch_pretrained_bert  
 
 alias vTA=~/vTA/bin/python
 alias vTA_activate=~/vTA/bin/activate
 # source ~/.bashrc
 
-chsh -s /bin/zsh
+chsh -s /bin/zsh 
+
+git clone https://github.com/nvidia/apex
+cd apex
+pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .
+
