@@ -3,8 +3,9 @@ import numpy as np
 from tqdm import tqdm
 from models.model_loader import load_model
 from torchvision.transforms import Compose
-from dataset.data_transform import Resize, Rotation, Translation, Scale
-from dataset.test_data import TestDataset
+# from dataset.data_transform import Resize, Rotation, Translation, Scale
+from dataset.data_transform import Resize
+# from dataset.test_data import TestDataset
 from dataset.text_data import TextDataset
 from dataset.collate_fn import text_collate
 
@@ -25,10 +26,20 @@ def main():
     input_size = [int(x) for x in config.input_size.split('x')]
     # TODO: 1) Sử dụng elastic transform 2) Random erasor một phần của bức ảnh. de data augmentation
     transform = Compose([
-        Rotation(),
-        Resize(size=(input_size[0], input_size[1]), data_augmen=True)
+        # Rotation(),
+        # Resize(size=(input_size[0], input_size[1]), data_augmen=True)
+        Resize(size=(input_size[0], input_size[1]))
     ])
-    data = TextDataset(data_path=config.train_dev_path, mode="train", transform=transform)
+    data = TextDataset(data_path=config.data_path, mode="train", transform=transform)
+    print ("Len of train =", len(data))
+    data.set_mode("dev")
+    print ("Len of dev =", len(data))
+    data.set_mode("test")
+    print ("Len of test =", len(data))
+    data.set_mode("test_annotated")
+    print ("Len of test_annotated =", len(data))
+    data.set_mode("train")
+
     net = load_model(input_size, data.get_abc(), None, config.backend, config.snapshot)
     total_params = sum(p.numel() for p in net.parameters())
     train_total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
@@ -50,13 +61,18 @@ def main():
             print("dev phase")
             data.set_mode("dev")
             acc, dev_avg_ed = test(net, data, data.get_abc(), visualize=True,
-                             batch_size=config.batch_size, num_workers=0)
-            print("acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))
+                             batch_size=config.dev_batch_size, num_workers=config.num_worker)
+            print("DEV: acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))
+
+            data.set_mode("test_annotated")
+            annotated_acc, annotated_avg_ed = test(net, data, data.get_abc(), visualize=True,
+                                                   batch_size=config.batch_size, num_workers=config.num_worker)
+            print("ANNOTATED: acc: {}; avg_ed: {}".format(annotated_acc, annotated_avg_ed))
 
         net = net.train()
         data.set_mode("train")
         data_loader = DataLoader(data, batch_size=config.batch_size,
-                                 num_workers=0, shuffle=True, collate_fn=text_collate)
+                                 num_workers=config.num_worker, shuffle=True, collate_fn=text_collate)
         loss_mean = []
         iterator = tqdm(data_loader)
         for sample in iterator:
@@ -103,6 +119,11 @@ def main():
         # TODO: print avg_ed & acc in train epoch
         print ("train: epoch: {}; loss_mean: {}".format(epoch_count, np.mean(loss_mean)))
         print ("dev: acc: {}; avg_ed: {}; avg_ed_best: {}".format(acc, dev_avg_ed, dev_avg_ed_best))
+
+        data.set_mode("test_annotated")
+        annotated_acc, annotated_avg_ed = test(net, data, data.get_abc(), visualize=True,
+                               batch_size=config.batch_size, num_workers=config.num_worker)
+        print("ANNOTATED: acc: {}; avg_ed: {}".format(annotated_acc, annotated_avg_ed))
 
         # TODO: add tensorboard to visualize loss_mean & avg_ed & acc
         lr_scheduler.step(dev_avg_ed)

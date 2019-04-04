@@ -9,20 +9,21 @@ import numpy as np
 from torch.nn import init
 import config
 
+
 class CRNN(nn.Module):
     def __init__(self,
                  input_size,
                  abc,
                  backend,
-                 lstm_hidden_size=config.lstm_hidden_size,
-                 lstm_num_layers=config.lstm_num_layers,
-                 lstm_dropout=config.dropout,
+                 # lstm_hidden_size=config.lstm_hidden_size,
+                 # lstm_num_layers=config.lstm_num_layers,
+                 # lstm_dropout=config.dropout,
                  seq_proj=[0, 0],
                  ):
         super(CRNN, self).__init__()
 
         self.abc = abc
-        self.num_classes = len(self.abc) + 1 # include blank id = 0
+        self.num_classes = len(self.abc) + 1  # include blank id = 0
         self.input_size = input_size
         feature_extractor = getattr(models, backend)(pretrained=True)
         self.resnet18 = nn.Sequential(
@@ -38,9 +39,10 @@ class CRNN(nn.Module):
         self.downrate = config.downrate
         self.num_filter = config.num_filter
         self.feature_dim = int(input_size[1] / self.downrate) * self.num_filter
-        self.lstm_input_size= config.lstm_input_size
-        self.lstm_num_layers = lstm_num_layers
-        self.lstm_hidden_size = lstm_hidden_size
+        self.lstm_input_size = config.lstm_input_size
+        self.lstm_num_layers = config.lstm_num_layers
+        self.lstm_hidden_size = config.lstm_hidden_size
+        self.lstm_dropout = config.lstm_dropout
 
         # self.fully_conv = seq_proj[0] == 0
         # if not self.fully_conv:
@@ -48,17 +50,17 @@ class CRNN(nn.Module):
         # self.rnn = nn.LSTM(self.get_block_size(self.cnn),
 
         self.lstm = nn.LSTM(self.lstm_input_size,
-                            lstm_hidden_size, self.lstm_num_layers,
+                            self.lstm_hidden_size, self.lstm_num_layers,
                             batch_first=False,
-                            dropout=lstm_dropout, bidirectional=True)
+                            dropout=self.lstm_dropout, bidirectional=True)
 
-       # transformation
+        # transformation
         self.cnn2lstm = nn.Sequential(
             nn.Dropout(config.dropout),
             nn.Linear(self.feature_dim, self.lstm_input_size),
             nn.ReLU(),
         )
-        self.lstm2logit = nn.Linear(lstm_hidden_size * 2, self.num_classes)
+        self.lstm2logit = nn.Linear(self.lstm_hidden_size * 2, self.num_classes)
         self.softmax = nn.Softmax(dim=2)
 
         # (len, batch, dim)
@@ -81,9 +83,10 @@ class CRNN(nn.Module):
                 assert pname.startswith('bias')
                 init.constant_(pval, 0.)
 
-    def forward(self, x, decode=False, debug=False):
-        # x = (b, c, input_h, input_w)
-        features = self.resnet18(x) # (b, c, h, w)
+    def forward(self, x, decode=False, print_softmax=False):
+        # x = (b, c, w, h)
+        assert x.size()[1] == 3 and x.size()[2] == self.input_size[1] and x.size()[3] == self.input_size[0]
+        features = self.resnet18(x)  # (b, c, w, h)
         # TODO: add attention on top of CNN
 
         # (w, b, feature_map)
@@ -101,7 +104,7 @@ class CRNN(nn.Module):
         else:
             softmax = self.softmax(seq)
             seq = self.log_softmax(seq)
-            if debug:
+            if print_softmax:
                 seq = seq, softmax
         return seq
 
@@ -113,19 +116,13 @@ class CRNN(nn.Module):
     #     return h0
 
     def features_to_sequence(self, features):
-        # b, c, h, w = features.size()
-        # assert h == 1, "the height of out must be 1"
-        # if not self.fully_conv:
-        #     features = features.permute(0, 3, 2, 1) # (b, w, h, c)
-        #     features = self.proj(features)
-        #     features = features.permute(1, 0, 2, 3) # (w, b, h, c)
-        # else:
-        #     features = features.permute(3, 0, 2, 1) # (w, b, h, c)
-        # features = features.squeeze(2)
-
-        features = features.permute(3, 0, 2, 1) # (w, b, h, c)
+        # (b, c, h, w)
+        features = features.permute(3, 0, 2, 1)  # (w, b, h, c)
         features = features.contiguous().view(features.size()[0], features.size()[1], -1)  # (w, b, h * c)
-        features = self.cnn2lstm(features) # (w, b, rnn_input)
+        assert features.size()[0] == 120 and \
+               features.size()[2] == int(self.input_size[1] / config.downrate) * config.num_filter
+        features = self.cnn2lstm(features)  # (w, b, rnn_input)
+        assert features.size()[0] == 120 and features.size()[2] == config.lstm_input_size
         return features
 
     # def get_block_size(self, layer):
