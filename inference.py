@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-
+from dataset.text_data import label_dict
 import config
 from dataset.text_data import TextDataset
 from dataset.collate_fn import text_collate
@@ -47,7 +47,7 @@ def test(net, data, abc, visualize, batch_size, num_workers=0,
         for sample in iterator:
             imgs = Variable(sample["img"])
             imgs = imgs.cuda()
-            out = net(imgs, decode=True)
+            out, pred_label_id = net(imgs, decode=True)
             gt = (sample["seq"].numpy() - 1).tolist()
             lens = sample["seq_len"].numpy().tolist()
             pos = 0
@@ -67,8 +67,10 @@ def test(net, data, abc, visualize, batch_size, num_workers=0,
                 if output_image:
                     img = imgs[i].permute(1, 2, 0).cpu().data.numpy().astype(np.uint8)
 
+                pred_label = label_dict[pred_label_id]
+
                 if visualize:
-                    log.append((sample["name"][i], out[i], gts, cur_dist, img))
+                    log.append((sample["name"][i], out[i], gts, cur_dist, img, pred_label))
 
     eds = None
     if visualize:

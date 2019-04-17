@@ -4,10 +4,12 @@ dau_cau ="àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếể
 abc = dau_cau + "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;?@[\\]^_`{|}~ "
 # no duplicate char
 assert len(set(abc)) == len(abc)
+
+num_labels = 9
 num_worker = 0
 
 # data
-data_path = "/root/textGenerator/source/out"
+data_path = "/root/textGenerator/source/out/clean"
 # train_dev_path = "/root/TA/data/clean/train_dev/"
 current_path = os.path.dirname(__file__)
 json_file_path = os.path.join(current_path, "desc3.json")
@@ -19,8 +21,8 @@ test_mode = "test_annotated"
 
 # basemodel
 backend = "resnet18"
-# snapshot = os.path.join(current_path, "out/crnn_resnet18_best")
-snapshot = os.path.join(current_path, "out/crnn_" + backend + "_best")
+snapshot = os.path.join(current_path, "out/crnn_resnet18_best")
+# snapshot = os.path.join(current_path, "out/crnn_" + backend + "_best")
 
 # logging
 num_write_input_img = 30
@@ -31,7 +33,7 @@ output_transform = True
 # model config
 # input_size = "1920x128"
 input_size = "3840x128"
-base_lr = 1e-3
+base_lr = 1e-6
 batch_size = 40
 dev_batch_size = 100
 dropout = 0.25

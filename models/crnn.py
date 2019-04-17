@@ -3,6 +3,7 @@ from typing import List
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.nn import functional
 
 import torchvision.models as models
 import numpy as np
@@ -23,7 +24,8 @@ class CRNN(nn.Module):
         super(CRNN, self).__init__()
 
         self.abc = abc
-        self.num_classes = len(self.abc) + 1  # include blank id = 0
+        self.num_ocr_classes = len(self.abc) + 1  # include blank id = 0
+        self.num_labels = config.num_labels
         self.input_size = input_size
         feature_extractor = getattr(models, backend)(pretrained=True)
         self.resnet18 = nn.Sequential(
@@ -60,7 +62,8 @@ class CRNN(nn.Module):
             nn.Linear(self.feature_dim, self.lstm_input_size),
             nn.ReLU(),
         )
-        self.lstm2logit = nn.Linear(self.lstm_hidden_size * 2, self.num_classes)
+        self.lstm2logit = nn.Linear(self.lstm_hidden_size * 2, self.num_ocr_classes)
+        self.lstm2label = nn.Linear(self.lstm_hidden_size * 2, self.num_labels)
         self.softmax = nn.Softmax(dim=2)
 
         # (len, batch, dim)
@@ -86,6 +89,7 @@ class CRNN(nn.Module):
     def forward(self, x, decode=False, print_softmax=False):
         # x = (b, c, w, h)
         assert x.size()[1] == 3 and x.size()[2] == self.input_size[1] and x.size()[3] == self.input_size[0]
+        batch_size = x.size()[0]
         features = self.resnet18(x)  # (b, c, w, h)
         # TODO: add attention on top of CNN
 
@@ -97,16 +101,26 @@ class CRNN(nn.Module):
 
         # seq = (w, b, num_class)
         seq = self.lstm2logit(seq)
+
+        # label pred
+        label_logit = self.lstm2label(hidden[0].view(batch_size, -1)) # (b, dim) -> (b, 9)
+        label_logsoftmax = functional.log_softmax(label_logit, dim=1)
+
         if not self.training:
             seq = self.softmax(seq)
             if decode:
                 seq = self.decode(seq)
+                label_logsoftmax = label_logsoftmax.cpu().data.numpy()
+                pred_label = np.argmax(label_logsoftmax)
+                return seq, pred_label
+            else:
+                raise ValueError("not decode???")
         else:
-            softmax = self.softmax(seq)
+            # softmax = self.softmax(seq)
             seq = self.log_softmax(seq)
-            if print_softmax:
-                seq = seq, softmax
-        return seq
+            # if print_softmax:
+            #     seq = seq, softmax
+            return seq, label_logsoftmax
 
     # def init_hidden(self, batch_size, gpu=False):
     #     h0 = Variable(torch.zeros(self.lstm_num_layers * 2,
